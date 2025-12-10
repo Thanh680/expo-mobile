@@ -7,6 +7,7 @@ import { ThemedView } from '@/components/themed-view';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {SafeAreaView, useSafeAreaInsets} from "react-native-safe-area-context";
 import {Link} from "expo-router";
+import { useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 
@@ -14,12 +15,33 @@ export default function ChatScreen() {
 
     type message = {
         user: string;
-        message: string;
+        message?: string;
+        image?: string;
     }
 
+    // état du texte à saisir
+    const [messageText, setMessageText] = useState<string>("");
+
+    // état de l'image preview (reçue depuis la caméra)
     const { imageUri } = useLocalSearchParams<{ imageUri?: string }>();
 
-    const conversation: message[] = [
+    const [currentImageUri, setCurrentImageUri] = useState<string | null>(
+        imageUri ?? null
+    );
+
+
+    const addMessage = (text: string, imageUri?: string) => {
+        setConversation(prev => [
+            ...prev,
+            {
+                user: "John",
+                message: imageUri ? undefined : text,
+                image: imageUri ? imageUri : undefined
+            }
+        ]);
+    };
+
+    const [conversation, setConversation] = useState<message[]>([
         {
             user: "John",
             message: "Hello, how are you?"
@@ -140,7 +162,7 @@ export default function ChatScreen() {
             user: "Bot",
             message: "I'm good, thanks! How about you?"
         }
-    ]
+    ])
 
     const styleMessageUser = (user: string) => {
         if (user === "John") {
@@ -163,26 +185,44 @@ export default function ChatScreen() {
             <FlatList style={styles.dialog} data={conversation} renderItem={({item})=>{
                 return (
                     <View style={[styles.message, styleMessageUser(item.user)]}>
+                    {item.image ? (
+                        <Image
+                            source={{ uri: item.image }}
+                            style={{ height: 200,width: 200, borderRadius: 5 }}
+                            contentFit="cover"
+                        />
+                    ) : (
                     <Text style={styleMessageUser(item.user)}>{item.message}</Text>
+                        )}
                     </View>
                 );
             }}>
             </FlatList>
             <View style={styles.inputContainer}>
-                {imageUri ? (
+                {currentImageUri ? (
                     <Image
-                        source={{ uri: imageUri }}
+                        source={{ uri: currentImageUri }}
                         style={{ marginVertical: 10, flex:1}}
                         contentFit="contain"
                     />
                 ) : (
                     <TextInput
+                        value={messageText}
+                        onChangeText={setMessageText}
                         style={styles.textInput}
                         placeholder="Type a message"
                     />
                 )}
                 <View style={styles.containerButtons}>
-                    <TouchableOpacity style={styles.buttonSend}>
+                    <TouchableOpacity style={styles.buttonSend} onPress={() => {
+                        if (imageUri) {
+                            addMessage("", imageUri);
+                            setCurrentImageUri(null);
+                        } else {
+                            addMessage(messageText);
+                            setMessageText("");
+                        }
+                    }}>
                         <FontAwesome name="send" size={24} color="black" />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.buttonPhoto}>
